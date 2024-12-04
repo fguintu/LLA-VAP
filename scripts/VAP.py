@@ -221,8 +221,13 @@ def load_and_preprocess_waveform(audio_path, sample_rate=16000, is_stimulus=True
     return waveform
 
 
-def get_vap_predictions(model, audio_path, device="cuda", chunk_duration=1.0):
-    """Get VAP predictions for an audio file (always treated as stimulus)"""
+def get_vap_predictions(model, audio_path, device="cuda", chunk_duration=1.0, threshold=0.3, flip_predictions=True):
+    """
+    Get VAP predictions with adjustable threshold and optional prediction flipping
+    Args:
+        threshold: Value between 0 and 1 to determine positive predictions
+        flip_predictions: If True, flips the prediction logic
+    """
     print(f"\nGetting VAP predictions for: {audio_path}")
     waveform = load_and_preprocess_waveform(audio_path, sample_rate=model.sample_rate, is_stimulus=True)
 
@@ -267,7 +272,13 @@ def get_vap_predictions(model, audio_path, device="cuda", chunk_duration=1.0):
                 total_frames += num_frames
                 total_inference_time += inference_time
 
-                pred_chunk = out['vad'].sigmoid().squeeze().cpu().numpy()[:, 0] > 0.5
+                # Get predictions with threshold
+                probabilities = out['vad'].sigmoid().squeeze().cpu().numpy()[:, 0]
+                if flip_predictions:
+                    pred_chunk = probabilities <= threshold
+                else:
+                    pred_chunk = probabilities > threshold
+
                 if chunk_end - i < chunk_samples:
                     actual_frames = int((chunk_end - i) / samples_per_frame)
                     pred_chunk = pred_chunk[:actual_frames]
