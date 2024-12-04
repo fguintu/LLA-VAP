@@ -63,7 +63,7 @@ def load_and_preprocess_waveform(audio_path, sample_rate=16000, is_stimulus=True
     return waveform
 
 
-def get_vap_predictions(model, audio_path, device="cuda", chunk_duration=1.0, threshold=0.6, flip_predictions=True):
+def get_vap_predictions(model, audio_path, device="cuda", chunk_duration=1.0, threshold=0.9995, flip_predictions=False):
     """
     Get VAP predictions with adjustable threshold and optional prediction flipping
     Args:

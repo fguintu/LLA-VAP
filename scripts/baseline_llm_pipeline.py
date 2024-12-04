@@ -29,7 +29,7 @@ os.environ["HF_HUB_ENABLE_SYMLINKS"] = "0"
 
 class RealTimeTRPPredictor:
     def __init__(self,
-                 model_name: str = "meta-llama/Llama-3.1-8B-Instruct",
+                 model_name: str = "meta-llama/Llama-3.2-3B-Instruct",
                  chunk_size: float = 1.0,
                  max_seq_len: int = 4096):
 
