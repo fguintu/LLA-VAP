@@ -1,0 +1,33 @@
+TRP Prediction: False
+GPU Memory: 5199.80MB
+================================================================================
+
+
+Real-time Factors:
+WhisperX RTF: 0.201
+LLM RTF: 8.642
+Combined RTF: 8.843
+
+Ground truth stats before window creation:
+Ground truth ones: 64
+Ground truth zeros: 45598
+Window size being used: 25 frames (0.500 seconds)
+
+Window Coverage Analysis:
+Total frames: 45662 (913.24 seconds)
+Frames in positive windows: 819 (16.38 seconds)
+Percentage of frames in windows: 1.8%
+Number of TRPs: 64
+Average gap between TRPs: 0.076 per second
+
+Prediction distribution in windows:
+Predictions=1 in windows=1 (TP): 12
+Predictions=1 in windows=0 (FP): 1038
+Predictions=0 in windows=1 (FN): 807
+Predictions=0 in windows=0 (TN): 43805
+
+Accuracy (ACC): 0.9596
+Balanced Accuracy (BACC): 0.4958
+Precision: 0.0114
+Recall: 0.0147
+F1 Score: 0.0128

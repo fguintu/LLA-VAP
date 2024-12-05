@@ -1,0 +1,34 @@
+{
+    "stim0_reg": {
+        "num_responses": 30,
+        "avg_response_duration": 0.028895483524174474,
+        "std_response_duration": 0.027653544654058105,
+        "min_duration": 0.0,
+        "max_duration": 0.634375,
+        "total_responses_found": 481989
+    },
+    "stim0_rev": {
+        "num_responses": 30,
+        "avg_response_duration": 0.025827015740109427,
+        "std_response_duration": 0.021844576695085046,
+        "min_duration": 0.0,
+        "max_duration": 0.5041666666666667,
+        "total_responses_found": 601330
+    },
+    "stim1_reg": {
+        "num_responses": 30,
+        "avg_response_duration": 0.024534445637726405,
+        "std_response_duration": 0.023026796676232853,
+        "min_duration": 0.0,
+        "max_duration": 0.784375,
+        "total_responses_found": 489779
+    },
+    "stim1_rev": {
+        "num_responses": 30,
+        "avg_response_duration": 0.025308003565517396,
+        "std_response_duration": 0.02336553045332813,
+        "min_duration": 0.0,
+        "max_duration": 0.34375,
+        "total_responses_found": 450519
+    }
+}
