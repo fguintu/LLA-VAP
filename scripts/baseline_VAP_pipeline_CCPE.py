@@ -56,7 +56,7 @@ def load_and_preprocess_waveform(audio_path, sample_rate=16000, is_stimulus=True
     return waveform
 
 
-def get_vap_predictions(model, audio_path, device="cuda", chunk_duration=1.0, threshold=0.9995, flip_predictions=False):
+def get_vap_predictions(model, audio_path, device="cuda", chunk_duration=1.0, threshold=0.5, flip_predictions=False):
     """
     Get VAP predictions with adjustable threshold and optional prediction flipping
     Args:
@@ -416,7 +416,7 @@ def main():
     vap_model_path = Path(
         "C:/Users/Harry/PycharmProjects/LLA-VAP/VoiceActivityProjection/example/VAP_3mmz3t0u_50Hz_ad20s_134-epoch9-val_2.56.pt")
     output_dir = Path("C:/Users/Harry/PycharmProjects/LLA-VAP/output")
-    flip_predictions = False  # Set this to True if needed
+    flip_predictions = True  # Set this to True if needed
 
     # Step 1: Extract ground truth
     print("Extracting ground truth...")

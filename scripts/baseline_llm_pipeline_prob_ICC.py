@@ -31,7 +31,7 @@ class RealTimeTRPPredictor:
                  model_name: str = "meta-llama/Llama-3.2-3B-Instruct",
                  chunk_size: float = 1.0,
                  max_seq_len: int = 4096,
-                 threshold: float = 0.5,
+                 threshold: float = 0.6,
                  flip_predictions: bool = False):
 
         self.threshold = threshold
