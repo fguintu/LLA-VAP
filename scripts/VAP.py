@@ -63,12 +63,10 @@ def load_and_preprocess_waveform(audio_path, sample_rate=16000, is_stimulus=True
     return waveform
 
 
-def get_vap_predictions(model, audio_path, device="cuda", chunk_duration=1.0, threshold=0.9995, flip_predictions=False):
+def get_vap_predictions(model, audio_path, device="cuda", chunk_duration=1.0, threshold=0.999, flip_predictions=False):
     """
-    Get VAP predictions with adjustable threshold and optional prediction flipping
-    Args:
-        threshold: Value between 0 and 1 to determine positive predictions
-        flip_predictions: If True, flips the prediction logic
+    Get VAP predictions and probabilities
+    Returns predictions, probabilities, and real-time factor
     """
     print(f"\nGetting VAP predictions for: {audio_path}")
     waveform = load_and_preprocess_waveform(audio_path, sample_rate=model.sample_rate, is_stimulus=True)
@@ -78,6 +76,7 @@ def get_vap_predictions(model, audio_path, device="cuda", chunk_duration=1.0, th
     chunk_samples = chunk_frames * samples_per_frame
 
     predictions_list = []
+    probabilities_list = []  # Added to store probabilities
     total_frames = 0
     total_inference_time = 0
 
@@ -114,16 +113,19 @@ def get_vap_predictions(model, audio_path, device="cuda", chunk_duration=1.0, th
                 total_frames += num_frames
                 total_inference_time += inference_time
 
-                # Get predictions with threshold
-                probabilities = out['vad'].sigmoid().squeeze().cpu().numpy()[:, 0]
+                # Get probabilities and predictions
+                probs = out['vad'].sigmoid().squeeze().cpu().numpy()[:, 0]
+                probabilities_list.append(probs)  # Store raw probabilities
+
                 if flip_predictions:
-                    pred_chunk = probabilities <= threshold
+                    pred_chunk = probs <= threshold
                 else:
-                    pred_chunk = probabilities > threshold
+                    pred_chunk = probs > threshold
 
                 if chunk_end - i < chunk_samples:
                     actual_frames = int((chunk_end - i) / samples_per_frame)
                     pred_chunk = pred_chunk[:actual_frames]
+                    probs = probs[:actual_frames]
                 predictions_list.append(pred_chunk)
 
             except Exception as e:
@@ -132,11 +134,12 @@ def get_vap_predictions(model, audio_path, device="cuda", chunk_duration=1.0, th
 
     if predictions_list:
         predictions = np.concatenate(predictions_list)
+        probabilities = np.concatenate(probabilities_list)  # Concatenate probabilities
         avg_time_per_frame = total_inference_time * 1000 / total_frames
         rtf = avg_time_per_frame / 20
         print(f"Processed {len(predictions)} frames ({len(predictions) / 50:.2f} seconds)")
         print(f"Real-time factor: {rtf:.3f}")
-        return predictions, rtf
+        return predictions, probabilities, rtf
     else:
         raise RuntimeError("Failed to process any chunks")
 

@@ -207,10 +207,10 @@ def main():
 
             stimulus_path = str(group['stimulus_path'])
             if stimulus_path not in vap_predictions_cache:
-                predictions, rtf = get_vap_predictions(model, stimulus_path, device)
-                vap_predictions_cache[stimulus_path] = (predictions, rtf)
+                predictions, probabilities, rtf = get_vap_predictions(model, stimulus_path, device)
+                vap_predictions_cache[stimulus_path] = (predictions, probabilities, rtf)
             else:
-                predictions, rtf = vap_predictions_cache[stimulus_path]
+                predictions, probabilities, rtf = vap_predictions_cache[stimulus_path]
                 print(f"Using cached VAP predictions")
 
             total_frames = len(predictions)
@@ -225,6 +225,7 @@ def main():
             min_len = min(len(ground_truth), len(predictions))
             ground_truth = ground_truth[:min_len]
             predictions = predictions[:min_len]
+            probabilities = probabilities[:min_len]
             response_proportions = response_proportions[:min_len]
 
             window_size = max(25, int(duration_stats['avg_duration']))
@@ -237,6 +238,7 @@ def main():
                             for k, v in metrics.items()},
                 'ground_truth': ground_truth.tolist(),
                 'predictions': predictions.tolist(),
+                'probabilities': probabilities.tolist(),
                 'response_proportions': response_proportions.tolist(),
                 'duration_stats': {k: float(v) if isinstance(v, (np.floating, np.integer)) else v
                                    for k, v in duration_stats.items()}

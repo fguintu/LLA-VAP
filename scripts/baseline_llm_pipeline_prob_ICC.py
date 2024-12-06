@@ -1,3 +1,4 @@
+# baseline_llm_pipeline_prob_ICC.py
 import numpy as np
 import whisperx
 import pandas as pd
@@ -31,7 +32,7 @@ class RealTimeTRPPredictor:
                  model_name: str = "meta-llama/Llama-3.2-3B-Instruct",
                  chunk_size: float = 1.0,
                  max_seq_len: int = 4096,
-                 threshold: float = 0.6,
+                 threshold: float = 0.5,
                  flip_predictions: bool = False):
 
         self.threshold = threshold
@@ -304,7 +305,7 @@ def main():
 
     try:
         print("Initializing predictor...")
-        predictor = RealTimeTRPPredictor(threshold=0.5, flip_predictions=False)
+        predictor = RealTimeTRPPredictor(threshold=0.7, flip_predictions=False)
         print("Initializing TRP processor...")
         trp_processor = TRPGroundTruth(response_threshold=0.3, frame_rate=50, window_size_sec=1.5)
 
