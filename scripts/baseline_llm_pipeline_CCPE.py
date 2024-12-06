@@ -265,7 +265,7 @@ def main():
     ground_truth = extractor.process_directory(audio_dir)
 
     print("\nEvaluating with LLAMA...")
-    evaluator = LlamaTurnEvaluator(flip_predictions=flip_predictions)
+    evaluator = LlamaTurnEvaluator(threshold=0.7, flip_predictions=flip_predictions)
     results = evaluator.evaluate_directory(audio_dir, ground_truth, output_dir, flip_predictions=flip_predictions)
 
     if results:

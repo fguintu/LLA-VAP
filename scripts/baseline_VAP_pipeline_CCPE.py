@@ -62,6 +62,8 @@ def get_vap_predictions(model, audio_path, device="cuda", chunk_duration=1.0, th
     Args:
         threshold: Value between 0 and 1 to determine positive predictions
         flip_predictions: If True, flips the prediction logic
+    Returns:
+        Tuple of (binary predictions, raw probabilities, real-time factor)
     """
     print(f"\nGetting VAP predictions for: {audio_path}")
     waveform = load_and_preprocess_waveform(audio_path, sample_rate=model.sample_rate, is_stimulus=False)
@@ -71,6 +73,7 @@ def get_vap_predictions(model, audio_path, device="cuda", chunk_duration=1.0, th
     chunk_samples = chunk_frames * samples_per_frame
 
     predictions_list = []
+    probabilities_list = []
     total_frames = 0
     total_inference_time = 0
 
@@ -107,7 +110,7 @@ def get_vap_predictions(model, audio_path, device="cuda", chunk_duration=1.0, th
                 total_frames += num_frames
                 total_inference_time += inference_time
 
-                # Get predictions with threshold
+                # Get probabilities and predictions
                 probabilities = out['vad'].sigmoid().squeeze().cpu().numpy()[:, 0]
                 if flip_predictions:
                     pred_chunk = probabilities <= threshold
@@ -117,7 +120,10 @@ def get_vap_predictions(model, audio_path, device="cuda", chunk_duration=1.0, th
                 if chunk_end - i < chunk_samples:
                     actual_frames = int((chunk_end - i) / samples_per_frame)
                     pred_chunk = pred_chunk[:actual_frames]
+                    probabilities = probabilities[:actual_frames]
+
                 predictions_list.append(pred_chunk)
+                probabilities_list.append(probabilities)
 
             except Exception as e:
                 print(f"Error processing chunk: {str(e)}")
@@ -125,11 +131,12 @@ def get_vap_predictions(model, audio_path, device="cuda", chunk_duration=1.0, th
 
     if predictions_list:
         predictions = np.concatenate(predictions_list)
+        probabilities = np.concatenate(probabilities_list)
         avg_time_per_frame = total_inference_time * 1000 / total_frames
         rtf = avg_time_per_frame / 20
         print(f"Processed {len(predictions)} frames ({len(predictions)/50:.2f} seconds)")
         print(f"Real-time factor: {rtf:.3f}")
-        return predictions, rtf
+        return predictions, probabilities, rtf
     else:
         raise RuntimeError("Failed to process any chunks")
 
@@ -264,77 +271,22 @@ class TurnShiftEvaluator:
 
     def evaluate_file(self, audio_path, ground_truth_data, flip_predictions=False):
         """Evaluate VAP predictions against ground truth."""
-        # Get VAP predictions
-        predictions, rtf = get_vap_predictions(self.model, audio_path, self.device, flip_predictions=flip_predictions)
+        # Get VAP predictions and probabilities
+        predictions, probabilities, rtf = get_vap_predictions(
+            self.model, audio_path, self.device, flip_predictions=flip_predictions
+        )
 
         # Ensure predictions and ground truth have same length
         min_len = min(len(predictions), len(ground_truth_data['ground_truth']))
         predictions = predictions[:min_len]
+        probabilities = probabilities[:min_len]
         ground_truth = ground_truth_data['ground_truth'][:min_len]
 
         # Calculate metrics
         metrics = evaluate_predictions(ground_truth, predictions)
         metrics['real_time_factor'] = float(rtf)
 
-        return metrics, predictions
-
-    def plot_comparison(self, audio_name, ground_truth, predictions, save_path, window_size=75):
-        """Create visualization matching the example format."""
-        plt.figure(figsize=(15, 12))
-
-        # Ensure all arrays have the same length
-        min_len = min(len(ground_truth), len(predictions))
-        ground_truth = ground_truth[:min_len]
-        predictions = predictions[:min_len]
-        time_axis = np.arange(min_len) / 50  # 50Hz to seconds
-
-        # Plot 1: Ground Truth vs Predictions
-        plt.subplot(3, 1, 1)
-        plt.plot(time_axis, ground_truth.astype(int), 'g-', label='Ground Truth')
-        plt.plot(time_axis, predictions.astype(int), 'r--', alpha=0.5, label='Predictions')
-        plt.title(f'Ground Truth vs Predictions - {audio_name}')
-        plt.ylabel('Turn Shift Present')
-        plt.legend()
-
-        # Plot 2: Evaluation Windows
-        plt.subplot(3, 1, 2)
-        windows = np.zeros_like(ground_truth, dtype=float)
-        for i in np.where(ground_truth == 1)[0]:
-            start = max(0, i - window_size)
-            end = min(len(ground_truth), i + window_size + 1)
-            windows[start:end] = 0.5
-        plt.fill_between(time_axis, 0, windows, color='g', alpha=0.2, label='Windows')
-        plt.plot(time_axis, predictions, 'r-', alpha=0.7, label='Predictions')
-        plt.title('Evaluation Windows')
-        plt.ylabel('Window/Prediction')
-        plt.legend()
-
-        # Plot 3: Local Window-based Accuracy
-        plt.subplot(3, 1, 3)
-        local_acc = np.zeros_like(ground_truth, dtype=float)
-        for i in range(len(ground_truth)):
-            window_start = max(0, i - window_size)
-            window_end = min(len(ground_truth), i + window_size + 1)
-            gt_window = ground_truth[window_start:window_end]
-            pred_window = predictions[window_start:window_end]
-
-            tp = (np.any(gt_window == 1) and np.any(pred_window == 1))
-            tn = (not np.any(gt_window == 1) and not np.any(pred_window == 1))
-
-            if np.any(gt_window == 1):
-                local_acc[i] = 1.0 if tp else 0.0
-            else:
-                local_acc[i] = 1.0 if tn else 0.0
-
-        plt.plot(time_axis, local_acc, 'b-', label='Window-based Accuracy')
-        plt.title('Local Window-based Accuracy')
-        plt.xlabel('Time (s)')
-        plt.ylabel('Accuracy')
-        plt.legend()
-
-        plt.tight_layout()
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        plt.close()
+        return metrics, predictions, probabilities
 
     def evaluate_directory(self, audio_dir, ground_truth_data, output_dir, flip_predictions=False):
         """Evaluate all audio files and save results."""
@@ -347,7 +299,7 @@ class TurnShiftEvaluator:
             audio_path = Path(audio_dir) / audio_file
             if audio_path.exists():
                 print(f"\nProcessing: {audio_file}")
-                metrics, predictions = self.evaluate_file(
+                metrics, predictions, probabilities = self.evaluate_file(
                     str(audio_path),
                     gt_data,
                     flip_predictions=flip_predictions
@@ -356,7 +308,8 @@ class TurnShiftEvaluator:
                 all_results[audio_file] = {
                     'metrics': metrics,
                     'ground_truth': gt_data['ground_truth'].tolist(),
-                    'predictions': predictions.tolist()
+                    'predictions': predictions.tolist(),
+                    'probabilities': probabilities.tolist()  # Save raw probabilities
                 }
 
                 self.plot_comparison(
@@ -365,6 +318,15 @@ class TurnShiftEvaluator:
                     predictions,
                     output_dir / f"{audio_file}_analysis.png"
                 )
+
+                # Save probabilities to a separate CSV file
+                prob_df = pd.DataFrame({
+                    'time': np.arange(len(probabilities)) / 50,  # Convert frames to seconds
+                    'probability': probabilities,
+                    'prediction': predictions,
+                    'ground_truth': gt_data['ground_truth'][:len(predictions)]
+                })
+                prob_df.to_csv(output_dir / f"{audio_file}_probabilities.csv", index=False)
 
         # Calculate and save summary statistics
         if all_results:
